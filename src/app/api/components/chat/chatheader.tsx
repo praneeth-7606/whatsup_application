@@ -1,116 +1,96 @@
-import { useState } from 'react';
-import { FaEllipsisV, FaUserPlus, FaTag, FaSignOutAlt, FaUser } from 'react-icons/fa';
-import { supabase } from './supabaseclient';
-import type { Chat } from './chatlayout';
+import React, { useState } from 'react';
+import { 
+  FaSearch, 
+  FaFilter, 
+  FaSync, 
+  FaPlus,
+  FaSignOutAlt,
+  FaCommentDots
+} from 'react-icons/fa';
 
 interface ChatHeaderProps {
-  chat: Chat;
-  currentUserName: string;
-  currentUserEmail: string;
-  onLogout?: () => void;
-  onAddMember?: (chatId: string) => void;
-  onAddLabel?: (chatId: string) => void;
+  onNewChat: () => void;
+  onRefresh: () => void;
+  onLogout: () => void;
+  isRefreshing?: boolean;
+  filterCount?: number;
 }
 
 const ChatHeader = ({ 
-  chat, 
-  currentUserName, 
-  currentUserEmail,
-  onLogout, 
-  onAddMember, 
-  onAddLabel 
+  onNewChat, 
+  onRefresh, 
+  onLogout,
+  isRefreshing = false,
+  filterCount = 0
 }: ChatHeaderProps) => {
-  const [menuOpen, setMenuOpen] = useState(false);
-  
   return (
-    <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200">
-      {/* Chat info */}
-      <div className="flex items-center">
-        <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center text-lg font-semibold mr-3">
-          {typeof chat.avatar === 'string' && chat.avatar.length === 1 
-            ? chat.avatar 
-            : chat.name.charAt(0).toUpperCase()}
+    <div className="flex-shrink-0 px-4 py-3 border-b border-gray-200 bg-white">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center space-x-3">
+          <FaCommentDots className="text-gray-600" size={16} />
+          <span className="text-lg font-medium text-gray-800">chats</span>
+          <button 
+            className={`p-1 text-gray-400 hover:text-gray-600 rounded ${isRefreshing ? 'animate-spin text-green-500' : ''}`}
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            title="Refresh chats"
+          >
+            <FaSync size={12} />
+          </button>
         </div>
-        <div>
-          <h2 className="font-semibold text-gray-800">{chat.name}</h2>
-          <div className="flex items-center text-xs text-gray-500">
-            {chat.label && (
-              <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full mr-1">
-                {chat.label}
-              </span>
-            )}
-            {chat.secondaryLabel && (
-              <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">
-                {chat.secondaryLabel}
-              </span>
-            )}
-          </div>
+        <div className="flex items-center space-x-2">
+          <button 
+            onClick={onNewChat}
+            className="p-1.5 text-green-500 hover:text-green-700 hover:bg-green-100 rounded-full"
+            title="New chat"
+          >
+            <FaPlus size={14} />
+          </button>
+          <button 
+            onClick={onLogout}
+            className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full"
+            title="Logout"
+          >
+            <FaSignOutAlt size={14} />
+          </button>
         </div>
       </div>
-      
-      {/* Current user info & menu */}
-      <div className="flex items-center relative">
-        {/* Current user info */}
-        <div className="hidden md:flex items-center mr-4 text-sm text-gray-600">
-          <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 mr-2">
-            {currentUserName.charAt(0).toUpperCase()}
-          </div>
-          <div className="flex flex-col">
-            <span className="font-medium">{currentUserName}</span>
-            <span className="text-xs text-gray-500">{currentUserEmail}</span>
-          </div>
-        </div>
-        
-        {/* Menu button */}
+
+      {/* Search Bar with Refresh */}
+      <div className="relative mb-3">
+        <input
+          type="text"
+          placeholder="Search"
+          className="w-full pl-9 pr-9 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+          style={{color: '#374151', backgroundColor: '#ffffff'}}
+        />
+        <FaSearch className="absolute left-3 top-2.5 text-gray-400" size={14} />
         <button 
-          onClick={() => setMenuOpen(!menuOpen)}
-          className="p-2 rounded-full hover:bg-gray-100 text-gray-500 relative"
+          onClick={onRefresh}
+          className={`absolute right-3 top-2.5 ${isRefreshing ? 'animate-spin text-green-500' : 'text-gray-400 hover:text-gray-600'}`}
+          disabled={isRefreshing}
         >
-          <FaEllipsisV />
-          
-          {/* Dropdown menu */}
-          {menuOpen && (
-            <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
-              <ul className="py-1">
-                <li>
-                  <button 
-                    onClick={() => {
-                      if (onAddMember) onAddMember(chat.id);
-                      setMenuOpen(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                  >
-                    <FaUserPlus className="mr-2 text-gray-500" />
-                    Add Members
-                  </button>
-                </li>
-                <li>
-                  <button 
-                    onClick={() => {
-                      if (onAddLabel) onAddLabel(chat.id);
-                      setMenuOpen(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                  >
-                    <FaTag className="mr-2 text-gray-500" />
-                    Manage Labels
-                  </button>
-                </li>
-                <li>
-                  <button 
-                    onClick={() => {
-                      if (onLogout) onLogout();
-                      setMenuOpen(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 flex items-center"
-                  >
-                    <FaSignOutAlt className="mr-2" />
-                    Logout
-                  </button>
-                </li>
-              </ul>
-            </div>
-          )}
+          <FaSync size={14} />
+        </button>
+      </div>
+
+      {/* Filter Tags + New Chat Button */}
+      <div className="flex items-center space-x-2">
+        {filterCount > 0 && (
+          <button className="flex items-center space-x-1 px-2 py-1 bg-green-50 text-green-700 text-xs rounded border border-green-200">
+            <span>Filtered</span>
+            <span className="bg-green-200 text-green-800 px-1.5 py-0.5 rounded text-xs font-medium">
+              {filterCount}
+            </span>
+          </button>
+        )}
+        
+        <button 
+          onClick={onNewChat}
+          className="flex items-center space-x-1 px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded border border-blue-200"
+        >
+          <FaPlus size={10} />
+          <span>New Chat</span>
         </button>
       </div>
     </div>

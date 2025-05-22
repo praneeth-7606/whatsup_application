@@ -268,15 +268,43 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Format date for display
-export const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
-  return new Intl.DateTimeFormat('en-US', {
-    hour: 'numeric',
-    minute: 'numeric',
-    hour12: true,
-  }).format(date);
-};
+// Add this to your supabase/client.js file
 
+export const formatDate = (dateString) => {
+  if (!dateString) return '';
+  
+  const date = new Date(dateString);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  // Format time consistently
+  const timeFormat = (date) => {
+    return date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      hour12: true 
+    });
+  };
+  
+  // Check if the date is today
+  if (date >= today) {
+    return `Today, ${timeFormat(date)}`;
+  }
+  
+  // Check if the date is yesterday
+  if (date >= yesterday && date < today) {
+    return `Yesterday, ${timeFormat(date)}`;
+  }
+  
+  // Otherwise, return a formatted date
+  return `${date.toLocaleDateString('en-US', { 
+    day: '2-digit', 
+    month: 'short', 
+    year: '2-digit' 
+  })}`;
+};
 // Get avatar initial for users without avatar
 export const getAvatarInitial = (name: string) => {
   return name.charAt(0).toUpperCase();
