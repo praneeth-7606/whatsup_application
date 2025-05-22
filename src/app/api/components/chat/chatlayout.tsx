@@ -535,10 +535,10 @@ const ChatLayout = ({
         return;
       }
 
-      const chatsList = userChatMembers
-        .filter(member => member.chats)
-        .map(member => member.chats)
-        .filter(chat => chat !== null);
+       const chatsList = userChatMembers
+      .filter((member: any) => member.chats && member.chats !== null)
+      .map((member: any) => member.chats)
+      .filter((chat: any) => chat !== null);
 
       if (chatsList.length === 0) {
         console.log('No valid chats found, using demo data');
@@ -547,8 +547,9 @@ const ChatLayout = ({
       }
 
       const enrichedChats = await Promise.all(
-        chatsList.map(async (chat) => await enrichChatWithData(chat, userId))
-      );
+      chatsList.map(async (chat: any) => await enrichChatWithData(chat, userId))
+    );
+
 
       const validChats = enrichedChats.filter(chat => chat !== null) as Chat[];
       const sortedChats = validChats.sort((a, b) => {
@@ -1123,34 +1124,34 @@ const ChatLayout = ({
       {/* Chat List */}
       <div className="w-80 border-r border-gray-200">
         <ChatList
-          chats={filteredChats}
-          activeChat={activeChat}
-          onChatClick={handleChatClick}
-          filterValue={filterValue}
-          onFilterChange={setFilterValue}
-          currentUserId={currentUser?.id}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          availableLabels={availableLabels}
-          selectedLabel={selectedLabel}
-          onSelectLabel={setSelectedLabel}
-          isLoading={isLoading}
-          onNewChatClick={() => setShowNewChatModal(true)}
-          onManageLabelsClick={() => setShowLabelModal(true)}
-          onQuickLabelAssign={handleAssignLabel}
-        />
+  chats={filteredChats}
+  activeChat={activeChat}
+  onChatClick={handleChatClick}
+  filterValue={filterValue}
+  onFilterChange={setFilterValue}
+  currentUserId={currentUser?.id || ''} // Provide fallback for undefined
+  searchQuery={searchQuery}
+  onSearchChange={setSearchQuery}
+  availableLabels={availableLabels}
+  selectedLabel={selectedLabel}
+  onSelectLabel={setSelectedLabel}
+  isLoading={isLoading}
+  onNewChatClick={() => setShowNewChatModal(true)}
+  onManageLabelsClick={() => setShowLabelModal(true)}
+  onQuickLabelAssign={handleAssignLabel}
+/>
       </div>
       
       {/* Chat Window */}
       <div className="flex-1">
-        {activeChatData ? (
-          <ChatWindow
-            chat={activeChatData}
-            onSendMessage={(text) => handleSendMessage(activeChatData.id, text)}
-            currentUser={currentUser}
-            isConnected={isConnected}
-          />
-        ) : (
+       {activeChatData && currentUser ? (
+    <ChatWindow
+      chat={activeChatData}
+      onSendMessage={(text) => handleSendMessage(activeChatData.id, text)}
+      currentUser={currentUser!}
+      isConnected={isConnected}
+    />
+  ) : (
           <div className="flex items-center justify-center h-full bg-gray-50">
             <div className="text-center text-gray-500">
               <h3 className="text-lg font-medium mb-2">
