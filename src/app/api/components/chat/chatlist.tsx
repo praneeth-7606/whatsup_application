@@ -57,28 +57,7 @@ interface Chat {
   secondaryLabel?: string;
 }
 
-interface ChatListProps {
-  chats: Chat[];
-  activeChat: string | null;
-  onChatClick: (chatId: string) => void;
-  filterValue: string;
-  onFilterChange: (value: string) => void;
-  currentUserId?: string;
-  searchQuery: string;
-  onSearchChange: (query: string) => void;
-  availableLabels: Label[];
-  selectedLabel: string | null;
-  onSelectLabel: (label: string | null) => void;
-  isLoading: boolean;
-  onAssignLabel?: (chatId: string, labelName: string) => void;
-  onAddMember?: (chatId: string, userId: string) => void;
-  onRemoveMember?: (chatId: string, userId: string) => void;
-  onCreateLabel?: (name: string, color: string) => void;
-  onRefreshChats?: () => void;
-  // Add these two missing props:
-  onNewChatClick?: () => void;
-  onManageLabelsClick?: () => void;
-}
+
 
 interface Label {
   id: string;
@@ -103,10 +82,11 @@ interface ChatListProps {
   onAddMember?: (chatId: string, userId: string) => void;
   onRemoveMember?: (chatId: string, userId: string) => void;
   onCreateLabel?: (name: string, color: string) => void;
-  // Add these new props for NewChatButton
-  onRefreshChats?: () => void; // Callback to refresh the chat list
+  onRefreshChats?: () => void;
+  onNewChatClick?: () => void;
+  onManageLabelsClick?: () => void;
+  onQuickLabelAssign?: (chatId: string, labelName: string) => void; // Add this missing prop
 }
-
 const ChatList: React.FC<ChatListProps> = ({ 
   chats, 
   activeChat, 
@@ -125,9 +105,9 @@ const ChatList: React.FC<ChatListProps> = ({
   onRemoveMember,
   onCreateLabel,
   onRefreshChats,
-  // Add these new parameters:
   onNewChatClick,
-  onManageLabelsClick
+  onManageLabelsClick,
+  onQuickLabelAssign // Add this parameter
 }) => {
   // State management
   const [showCustomFilter, setShowCustomFilter] = useState(false);

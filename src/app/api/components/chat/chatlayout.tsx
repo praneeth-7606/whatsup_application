@@ -275,7 +275,7 @@ const ChatLayout = ({
     // Create dummy chats that match the screenshot exactly
     const dummyChats: Chat[] = [
       {
-        id: 'test-skope-final-5',
+        id: crypto.randomUUID(),
         name: 'Test Skope Final 5',
         lastMessage: "Support2: This doesn't go on Tuesday...",
         lastMessageTime: 'Yesterday, 04:30 PM',
@@ -296,7 +296,7 @@ const ChatLayout = ({
         ]
       },
       {
-        id: 'periskope-team-chat',
+        id: crypto.randomUUID(),
         name: 'Periskope Team Chat',
         lastMessage: 'Periskope: Test message',
         lastMessageTime: '28-Feb-25, 10:15 AM',
@@ -324,7 +324,7 @@ const ChatLayout = ({
         ]
       },
       {
-        id: 'phone-99999-99999',
+        id: crypto.randomUUID(),
         name: '+91 99999 99999',
         lastMessage: "Hi there, I'm Swapnika, Co-Founder of ...",
         lastMessageTime: '25-Feb-25, 09:30 AM',
@@ -345,7 +345,7 @@ const ChatLayout = ({
         ]
       },
       {
-        id: 'test-demo17',
+        id: crypto.randomUUID(),
         name: 'Test Demo17',
         lastMessage: 'Rohosen: 123',
         lastMessageTime: '25-Feb-25, 02:45 PM',
@@ -366,7 +366,7 @@ const ChatLayout = ({
         ]
       },
       {
-        id: 'test-el-centro',
+        id: crypto.randomUUID(),
         name: 'Test El Centro',
         lastMessage: 'Roshnag: Hello, Ahmadport!',
         lastMessageTime: '04-Feb-25, 11:20 AM',
@@ -394,7 +394,7 @@ const ChatLayout = ({
         ]
       },
       {
-        id: 'testing-group',
+        id: crypto.randomUUID(),
         name: 'Testing group',
         lastMessage: 'Testing 12345',
         lastMessageTime: '27-Jan-25, 03:15 PM',
@@ -445,18 +445,26 @@ const ChatLayout = ({
       
       setCurrentUser(user);
 
-      if (isDemo || !useRealDatabase) {
-        console.log('Using demo mode');
-        if (isMounted) createDummyData();
-        return;
-      }
+      // Replace the existing logic around line 320-340
+if (isDemo) {
+  console.log('Using demo mode');
+  if (isMounted) createDummyData();
+  return;
+}
 
-      const dbConnected = await testDatabaseConnection();
-      if (!dbConnected) {
-        console.log('Database connection failed, using demo mode');
-        if (isMounted) createDummyData();
-        return;
-      }
+// Test database connection first
+const dbConnected = await testDatabaseConnection();
+if (!dbConnected) {
+  console.log('Database connection failed, using demo mode');
+  setUseRealDatabase(false); // Add this line
+  if (isMounted) createDummyData();
+  return;
+}
+
+console.log('✅ Database connected, loading real data');
+setUseRealDatabase(true); // Add this line
+
+     
 
       try {
         // Load labels first
@@ -533,66 +541,70 @@ const ChatLayout = ({
   };
 
   // Load user chats
-  const loadUserChats = async (userId: string) => {
-    try {
-      console.log('📂 Loading chats for user:', userId);
+const loadUserChats = async (userId: string) => {
+  try {
+    console.log('📂 Loading chats for user:', userId);
 
-      const { data: userChatMembers, error } = await supabase
-        .from('chat_members')
-        .select(`
-          chat_id,
-          chats:chat_id (
-            id,
-            name,
-            is_group,
-            created_at,
-            updated_at
-          )
-        `)
-        .eq('user_id', userId);
+    const { data: userChatMembers, error } = await supabase
+      .from('chat_members')
+      .select(`
+        chat_id,
+        chats:chat_id (
+          id,
+          name,
+          is_group,
+          created_at,
+          updated_at
+        )
+      `)
+      .eq('user_id', userId);
 
-      if (error || !userChatMembers || userChatMembers.length === 0) {
-        console.log('No chats found for user, using demo data');
-        createDummyData();
-        return;
-      }
+    // Fix: Change 'memberError' to 'error'
+    if (error) {
+      console.error('Error fetching chat members:', error);
+      throw error;
+    }
 
-       const chatsList = userChatMembers
+    if (!userChatMembers || userChatMembers.length === 0) {
+      console.log('No chats found for user');
+      setChats([]);
+      setIsLoading(false);
+      return;
+    }
+
+    const chatsList = userChatMembers
       .filter((member: any) => member.chats && member.chats !== null)
       .map((member: any) => member.chats)
       .filter((chat: any) => chat !== null);
 
-      if (chatsList.length === 0) {
-        console.log('No valid chats found, using demo data');
-        createDummyData();
-        return;
-      }
+    if (chatsList.length === 0) {
+      console.log('No valid chats found, using demo data');
+      createDummyData();
+      return;
+    }
 
-      const enrichedChats = await Promise.all(
+    const enrichedChats = await Promise.all(
       chatsList.map(async (chat: any) => await enrichChatWithData(chat, userId))
     );
 
+    const validChats = enrichedChats.filter(chat => chat !== null) as Chat[];
+    const sortedChats = validChats.sort((a, b) => {
+      const dateA = parseDate(a.lastMessageTime);
+      const dateB = parseDate(b.lastMessageTime);
+      return dateB.getTime() - dateA.getTime();
+    });
 
-      const validChats = enrichedChats.filter(chat => chat !== null) as Chat[];
-      const sortedChats = validChats.sort((a, b) => {
-        // Parse the dates for comparison
-        const dateA = parseDate(a.lastMessageTime);
-        const dateB = parseDate(b.lastMessageTime);
-        return dateB.getTime() - dateA.getTime();
-      });
-
-      setChats(sortedChats);
-      if (sortedChats.length > 0) {
-        setActiveChat(sortedChats[0].id);
-      }
-
-      console.log('✅ Loaded', sortedChats.length, 'chats');
-    } catch (error) {
-      console.error('Error loading chats:', error);
-      createDummyData();
+    setChats(sortedChats);
+    if (sortedChats.length > 0) {
+      setActiveChat(sortedChats[0].id);
     }
-  };
 
+    console.log('✅ Loaded', sortedChats.length, 'chats');
+  } catch (error) {
+    console.error('Error loading chats:', error);
+    createDummyData();
+  }
+};
   // Helper to parse date strings for comparison
   const parseDate = (dateString: string): Date => {
     try {
@@ -633,118 +645,122 @@ const ChatLayout = ({
     }
   };
 
-  // Enrich chat with messages and member data
-  const enrichChatWithData = async (chat: any, userId: string): Promise<Chat | null> => {
-    try {
-      const { data: chatMembers } = await supabase
-        .from('chat_members')
-        .select(`
-          user_id,
-          users:user_id (
-            id,
-            full_name,
-            email,
-            avatar_url
-          )
-        `)
-        .eq('chat_id', chat.id);
 
-      let displayName = chat.name || 'Unknown Chat';
-      let avatar = null;
 
-      if (!chat.is_group && chatMembers && chatMembers.length >= 2) {
-        const otherUser = (chatMembers as ChatMemberResponse[]).find(member => 
-  member.user_id !== userId && member.users !== null
-);
-        
-        if (otherUser && otherUser.users) {
-          displayName = otherUser.users.full_name || 'Unknown User';
-          avatar = otherUser.users.avatar_url;
-        }
-      }
 
-      const { data: lastMessageData } = await supabase
-        .from('messages')
-        .select(`
-          content,
-          sender_id,
-          created_at,
-          users:sender_id (full_name)
-        `)
-        .eq('chat_id', chat.id)
-        .order('created_at', { ascending: false })
-        .limit(1);
+const enrichChatWithData = async (chat: any, userId: string): Promise<Chat | null> => {
+  try {
+    const { data: chatMembers } = await supabase
+      .from('chat_members')
+      .select(`
+        user_id,
+        users:user_id (
+          id,
+          full_name,
+          email,
+          avatar_url
+        )
+      `)
+      .eq('chat_id', chat.id);
 
-      let lastMessage = 'No messages';
-      let lastMessageTime = chat.updated_at || new Date().toISOString();
+    let displayName = chat.name || 'Unknown Chat';
+    let avatar = null;
 
-      if (lastMessageData && lastMessageData.length > 0) {
-        const msg = lastMessageData[0];
-        const senderName = msg.users?.full_name || 'Unknown';
-        
-        lastMessage = msg.sender_id === userId 
-          ? `You: ${msg.content}` 
-          : chat.is_group 
-            ? `${senderName}: ${msg.content}`
-            : msg.content;
-        lastMessageTime = msg.created_at;
-      }
-
-      const { data: unreadMessages } = await supabase
-        .from('messages')
-        .select('id')
-        .eq('chat_id', chat.id)
-        .neq('sender_id', userId)
-        .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
-
-      const unreadCount = unreadMessages ? Math.min(unreadMessages.length, 9) : 0;
-
-      // Get chat label/status
-      const { data: chatLabel } = await supabase
-        .from('chat_labels')
-        .select(`
-          labels:label_id (
-            id,
-            name,
-            color
-          )
-        `)
-        .eq('chat_id', chat.id)
-        .single();
-
-      let status: 'Demo' | 'Content' | 'Signup' | 'Internal' | undefined = undefined;
+    if (!chat.is_group && chatMembers && chatMembers.length >= 2) {
+      const otherUser = (chatMembers as ChatMemberResponse[]).find(member => 
+        member.user_id !== userId && member.users !== null
+      );
       
-      if (chatLabel && chatLabel.labels && chatLabel.labels.name) {
-        // Check if the label name matches one of our status types
-        const labelName = chatLabel.labels.name;
+      if (otherUser && otherUser.users) {
+        displayName = otherUser.users.full_name || 'Unknown User';
+        avatar = otherUser.users.avatar_url;
+      }
+    }
+
+    const { data: lastMessageData } = await supabase
+      .from('messages')
+      .select(`
+        content,
+        sender_id,
+        created_at,
+        users:sender_id (full_name)
+      `)
+      .eq('chat_id', chat.id)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    let lastMessage = 'No messages';
+    let lastMessageTime = chat.updated_at || new Date().toISOString();
+
+    if (lastMessageData && lastMessageData.length > 0) {
+      const msg = lastMessageData[0];
+      const senderName = msg.users?.full_name || 'Unknown';
+      
+      lastMessage = msg.sender_id === userId 
+        ? `You: ${msg.content}` 
+        : chat.is_group 
+          ? `${senderName}: ${msg.content}`
+          : msg.content;
+      lastMessageTime = msg.created_at;
+    }
+
+    const { data: unreadMessages } = await supabase
+      .from('messages')
+      .select('id')
+      .eq('chat_id', chat.id)
+      .neq('sender_id', userId)
+      .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+
+    const unreadCount = unreadMessages ? Math.min(unreadMessages.length, 9) : 0;
+
+    // Get chat label relationship - SIMPLE APPROACH
+    const { data: chatLabelData } = await supabase
+      .from('chat_labels')
+      .select('label_id')
+      .eq('chat_id', chat.id)
+      .single();
+
+    let status: 'Demo' | 'Content' | 'Signup' | 'Internal' | undefined = undefined;
+
+    if (chatLabelData && chatLabelData.label_id) {
+      // Get the actual label details
+      const { data: labelData } = await supabase
+        .from('labels')
+        .select('name, color')
+        .eq('id', chatLabelData.label_id)
+        .single();
+        
+      if (labelData && labelData.name) {
+        const labelName = labelData.name;
         if (labelName === 'Demo' || labelName === 'Content' || 
             labelName === 'Signup' || labelName === 'Internal') {
           status = labelName;
         }
       }
-      
-      // Default status based on chat type if none found
-      if (!status) {
-        status = chat.is_group ? 'Demo' : 'Content';
-      }
-
-      return {
-        id: chat.id,
-        name: displayName,
-        lastMessage: lastMessage,
-        lastMessageTime: formatDate(lastMessageTime),
-        avatar: avatar || getAvatarInitial(displayName),
-        type: chat.is_group ? 'Group' : 'Direct',
-        status: status,
-        unread: unreadCount,
-        memberCount: chatMembers ? chatMembers.length : 2,
-        messages: []
-      };
-    } catch (error) {
-      console.error('Error enriching chat:', error);
-      return null;
     }
-  };
+    
+    // Default status based on chat type if none found
+    if (!status) {
+      status = chat.is_group ? 'Demo' : 'Content';
+    }
+
+    return {
+      id: chat.id,
+      name: displayName,
+      lastMessage: lastMessage,
+      lastMessageTime: formatDate(lastMessageTime),
+      avatar: avatar || getAvatarInitial(displayName),
+      type: chat.is_group ? 'Group' : 'Direct',
+      status: status,
+      unread: unreadCount,
+      memberCount: chatMembers ? chatMembers.length : 2,
+      messages: []
+    };
+  } catch (error) {
+    console.error('Error enriching chat:', error);
+    return null;
+  }
+};
 
   // Load messages for active chat
   useEffect(() => {
@@ -809,209 +825,117 @@ const ChatLayout = ({
 
   // Send message function
   const handleSendMessage = useCallback(async (chatId: string, text: string) => {
-    if (!currentUser || !text.trim()) {
-      console.warn('Cannot send message: missing user or text');
-      return;
-    }
-
-    try {
-      console.log('📤 Sending message...', { chatId, text: text.trim() });
-
-      if (useRealDatabase) {
-        const sentMessage = await sendMessage(chatId, currentUser.id, text.trim());
-        
-        const formattedMessage: Message = {
-          id: sentMessage.id,
-          text: sentMessage.content,
-          sender: 'periskope',
-          time: formatDate(sentMessage.created_at),
-          senderName: currentUser.full_name,
-          email: currentUser.email,
-          isRead: true
+  if (!currentUser || !text.trim()) {
+    console.warn('Cannot send message: missing user or text');
+    return;
+  }
+  
+  console.log('📤 Sending message...', { 
+    chatId, 
+    text: text.trim(), 
+    useRealDatabase, 
+    isDemo,
+    currentUser: currentUser.id 
+  });
+  
+  // Force demo mode if no real database or if using demo data
+ // At the start of handleSendMessage function (around line 650)
+// Use demo mode if not using real database
+if (!useRealDatabase) {
+  console.log('💬 Using demo mode for messaging');
+  
+  const demoMessage: Message = {
+    id: crypto.randomUUID(),
+    text: text.trim(),
+    sender: 'periskope',
+    time: formatDate(new Date().toISOString()),
+    senderName: currentUser.full_name,
+    email: currentUser.email,
+    isRead: true
+  };
+  
+  setChats(prevChats =>
+    prevChats.map(chat => {
+      if (chat.id === chatId) {
+        return {
+          ...chat,
+          messages: [...chat.messages, demoMessage],
+          lastMessage: `You: ${text.trim()}`,
+          lastMessageTime: formatDate(new Date().toISOString())
         };
-
-        setChats(prevChats =>
-          prevChats.map(chat => {
-            if (chat.id === chatId) {
-              const messageExists = chat.messages.some(m => m.id === sentMessage.id);
-              if (messageExists) return chat;
-
-              return {
-                ...chat,
-                messages: [...chat.messages, formattedMessage],
-                lastMessage: `You: ${text.trim()}`,
-                lastMessageTime: formatDate(new Date().toISOString())
-              };
-            }
-            return chat;
-          })
-        );
-
-        console.log('✅ Message sent successfully');
-      } else {
-        const demoMessage: Message = {
-          id: `demo-${Date.now()}-${Math.random()}`,
-          text: text.trim(),
-          sender: 'periskope',
-          time: formatDate(new Date().toISOString()),
-          senderName: currentUser.full_name,
-          email: currentUser.email,
-          isRead: true
-        };
-
-        setChats(prevChats =>
-          prevChats.map(chat => {
-            if (chat.id === chatId) {
-              return {
-                ...chat,
-                messages: [...chat.messages, demoMessage],
-                lastMessage: `You: ${text.trim()}`,
-                lastMessageTime: formatDate(new Date().toISOString())
-              };
-            }
-            return chat;
-          })
-        );
       }
-    } catch (error) {
-      console.error('❌ Error sending message:', error);
-      alert(`Failed to send message: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }, [currentUser, useRealDatabase]);
+      return chat;
+    })
+  );
+  return;
 
-  // Handle chat click
-  const handleChatClick = useCallback((chatId: string) => {
-    console.log('💬 Opening chat:', chatId);
-    setActiveChat(chatId);
+  }
+  
+  // Continue with database logic only if we have real chats
+  try {
+    console.log('📤 Sending message to database...', { chatId, text: text.trim() });
+
+    const sentMessage = await sendMessage(chatId, currentUser.id, text.trim());
+    
+    const formattedMessage: Message = {
+      id: sentMessage.id,
+      text: sentMessage.content,
+      sender: 'periskope',
+      time: formatDate(sentMessage.created_at),
+      senderName: currentUser.full_name,
+      email: currentUser.email,
+      isRead: true
+    };
+
+    setChats(prevChats =>
+      prevChats.map(chat => {
+        if (chat.id === chatId) {
+          const messageExists = chat.messages.some(m => m.id === sentMessage.id);
+          if (messageExists) return chat;
+
+          return {
+            ...chat,
+            messages: [...chat.messages, formattedMessage],
+            lastMessage: `You: ${text.trim()}`,
+            lastMessageTime: formatDate(new Date().toISOString())
+          };
+        }
+        return chat;
+      })
+    );
+
+    console.log('✅ Message sent successfully');
+  } catch (error) {
+    console.error('❌ Error sending message:', error);
+    
+    // Fallback to demo mode if database fails
+    console.log('🔄 Falling back to demo mode due to database error');
+    
+    const demoMessage: Message = {
+      id: crypto.randomUUID(),
+      text: text.trim(),
+      sender: 'periskope',
+      time: formatDate(new Date().toISOString()),
+      senderName: currentUser.full_name,
+      email: currentUser.email,
+      isRead: true
+    };
     
     setChats(prevChats =>
-      prevChats.map(chat => 
-        chat.id === chatId ? { ...chat, unread: 0 } : chat
-      )
+      prevChats.map(chat => {
+        if (chat.id === chatId) {
+          return {
+            ...chat,
+            messages: [...chat.messages, demoMessage],
+            lastMessage: `You: ${text.trim()}`,
+            lastMessageTime: formatDate(new Date().toISOString())
+          };
+        }
+        return chat;
+      })
     );
-  }, []);
-
-  // IMPLEMENTED: Create new chat function
-  const handleCreateChat = useCallback(async (newChatData: any) => {
-    try {
-      console.log('Creating new chat with data:', newChatData);
-      
-      if (!currentUser) {
-        throw new Error('No user available to create chat');
-      }
-      
-      // Generate a unique ID for the chat
-      const chatId = `chat-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-      
-      if (useRealDatabase) {
-        // Create the chat in the database
-        const { data: newChat, error } = await supabase
-          .from('chats')
-          .insert({
-            id: chatId,
-            name: newChatData.name,
-            is_group: newChatData.type === 'Group',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select()
-          .single();
-          
-        if (error) throw error;
-        
-        // Add current user as member
-        const { error: memberError } = await supabase
-          .from('chat_members')
-          .insert({
-            chat_id: chatId,
-            user_id: currentUser.id,
-            role: 'admin',
-            joined_at: new Date().toISOString()
-          });
-          
-        if (memberError) throw memberError;
-        
-        // Add other members if selected
-        if (newChatData.members && newChatData.members.length > 0) {
-          const memberInserts = newChatData.members.map((memberId: string) => ({
-            chat_id: chatId,
-            user_id: memberId,
-            role: 'member',
-            joined_at: new Date().toISOString()
-          }));
-          
-          const { error: bulkMemberError } = await supabase
-            .from('chat_members')
-            .insert(memberInserts);
-            
-          if (bulkMemberError) throw bulkMemberError;
-        }
-        
-        // Add label if provided
-        if (newChatData.label) {
-          // Find label ID from name
-          const labelObj = availableLabels.find(l => l.name === newChatData.label);
-          if (labelObj) {
-            const { error: labelError } = await supabase
-              .from('chat_labels')
-              .insert({
-                chat_id: chatId,
-                label_id: labelObj.id
-              });
-              
-            if (labelError) console.warn('Failed to add label:', labelError);
-          }
-        }
-        
-        // Send a welcome message
-        const welcomeMessage = newChatData.type === 'Group' 
-          ? `Welcome to the ${newChatData.name} group!`
-          : `Hello! Let's start chatting.`;
-        
-        await sendMessage(chatId, currentUser.id, welcomeMessage);
-        
-        // Reload chats after creating
-        await loadUserChats(currentUser.id);
-      } else {
-        // Demo mode - create a chat in the local state
-        const status = newChatData.label || 'Demo';
-        const welcomeMessage = newChatData.type === 'Group' 
-          ? `Welcome to the ${newChatData.name} group!`
-          : `Hello! Let's start chatting.`;
-        
-        const newChat: Chat = {
-          id: chatId,
-          name: newChatData.name,
-          lastMessage: `You: ${welcomeMessage}`,
-          lastMessageTime: formatDate(new Date().toISOString()),
-          avatar: getAvatarInitial(newChatData.name),
-          type: newChatData.type,
-          status: status as any,
-          unread: 0,
-          memberCount: newChatData.members ? newChatData.members.length + 1 : 2,
-          messages: [{
-            id: `demo-${Date.now()}`,
-            text: welcomeMessage,
-            sender: 'periskope',
-            time: formatDate(new Date().toISOString()),
-            senderName: currentUser.full_name,
-            email: currentUser.email,
-            isRead: true
-          }]
-        };
-        
-        setChats(prevChats => [newChat, ...prevChats]);
-        setActiveChat(chatId);
-      }
-      
-      setShowNewChatModal(false);
-      console.log('✅ Chat created successfully');
-      
-    } catch (error) {
-      console.error('❌ Error creating chat:', error);
-      alert(`Failed to create chat: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }, [currentUser, useRealDatabase, availableLabels, loadUserChats, sendMessage]);
+  }
+}, [currentUser, useRealDatabase, isDemo, chats.length, sendMessage]);
 
   // Create a new label
   const handleCreateLabel = useCallback(async (labelData: { name: string, color: string }) => {
@@ -1125,6 +1049,206 @@ const ChatLayout = ({
     [chats, activeChat]
   );
 
+const handleChatClick = useCallback((chatId: string) => {
+  console.log('🔄 Switching to chat:', chatId);
+  setActiveChat(chatId);
+  
+  // Mark messages as read
+  setChats(prevChats =>
+    prevChats.map(chat => {
+      if (chat.id === chatId) {
+        return {
+          ...chat,
+          unread: 0
+        };
+      }
+      return chat;
+    })
+  );
+}, []);
+
+
+  // Add this function after handleSendMessage
+// const handleCreateChat = useCallback(async (chatData: {
+//   name: string;
+//   isGroup: boolean;
+//   memberEmails: string[];
+//   labelId?: string;
+// }) => {
+//   if (!currentUser) return;
+
+//   try {
+//     console.log('🆕 Creating new chat:', chatData);
+
+//     if (!useRealDatabase) {
+//       // Demo mode - create local chat
+//       const newChat: Chat = {
+//         id: crypto.randomUUID(),
+//         name: chatData.name,
+//         lastMessage: 'Chat created',
+//         lastMessageTime: formatDate(new Date().toISOString()),
+//         avatar: getAvatarInitial(chatData.name),
+//         type: chatData.isGroup ? 'Group' : 'Direct',
+//         status: 'Demo',
+//         unread: 0,
+//         memberCount: chatData.memberEmails.length + 1,
+//         messages: []
+//       };
+
+//       setChats(prevChats => [newChat, ...prevChats]);
+//       setActiveChat(newChat.id);
+//       setShowNewChatModal(false);
+//       return;
+//     }
+
+//     // Real database - create chat
+//     const { data: newChatData, error: chatError } = await supabase
+//       .from('chats')
+//       .insert({
+//         name: chatData.name,
+//         is_group: chatData.isGroup,
+//         created_by: currentUser.id
+//       })
+//       .select()
+//       .single();
+
+//     if (chatError) throw chatError;
+
+//     // Add current user to chat
+//     await supabase
+//       .from('chat_members')
+//       .insert({
+//         chat_id: newChatData.id,
+//         user_id: currentUser.id
+//       });
+
+//     // Add other members
+//     for (const email of chatData.memberEmails) {
+//       const { data: userData } = await supabase
+//         .from('users')
+//         .select('id')
+//         .eq('email', email)
+//         .single();
+
+//       if (userData) {
+//         await supabase
+//           .from('chat_members')
+//           .insert({
+//             chat_id: newChatData.id,
+//             user_id: userData.id
+//           });
+//       }
+//     }
+
+//     // Add label if specified
+//     if (chatData.labelId) {
+//       await supabase
+//         .from('chat_labels')
+//         .insert({
+//           chat_id: newChatData.id,
+//           label_id: chatData.labelId
+//         });
+//     }
+
+//     // Refresh chats
+//     await loadUserChats(currentUser.id);
+//     setShowNewChatModal(false);
+
+//     console.log('✅ Chat created successfully');
+//   } catch (error) {
+//     console.error('❌ Error creating chat:', error);
+//     alert('Failed to create chat. Please try again.');
+//   }
+// }, [currentUser, useRealDatabase, loadUserChats]);
+
+
+const handleCreateChat = useCallback(async (
+  name: string,
+  isGroup: boolean,
+  memberIds: string[],
+  memberRoles?: { [userId: string]: 'admin' | 'member' },
+  labelIds?: string[]
+) => {
+  if (!currentUser) return;
+
+  try {
+    console.log('🆕 Creating new chat:', { name, isGroup, memberIds, labelIds });
+
+    if (!useRealDatabase) {
+      // Demo mode - create local chat
+      const newChat: Chat = {
+        id: crypto.randomUUID(),
+        name: name,
+        lastMessage: 'Chat created',
+        lastMessageTime: formatDate(new Date().toISOString()),
+        avatar: getAvatarInitial(name),
+        type: isGroup ? 'Group' : 'Direct',
+        status: 'Demo',
+        unread: 0,
+        memberCount: memberIds.length + 1,
+        messages: []
+      };
+
+      setChats(prevChats => [newChat, ...prevChats]);
+      setActiveChat(newChat.id);
+      setShowNewChatModal(false);
+      return;
+    }
+
+    // Real database - create chat
+    const { data: newChatData, error: chatError } = await supabase
+      .from('chats')
+      .insert({
+        name: name,
+        is_group: isGroup,
+        created_by: currentUser.id
+      })
+      .select()
+      .single();
+
+    if (chatError) throw chatError;
+
+    // Add current user to chat
+    await supabase
+      .from('chat_members')
+      .insert({
+        chat_id: newChatData.id,
+        user_id: currentUser.id
+      });
+
+    // Add other members
+    for (const memberId of memberIds) {
+      await supabase
+        .from('chat_members')
+        .insert({
+          chat_id: newChatData.id,
+          user_id: memberId
+        });
+    }
+
+    // Add labels if specified
+    if (labelIds && labelIds.length > 0) {
+      for (const labelId of labelIds) {
+        await supabase
+          .from('chat_labels')
+          .insert({
+            chat_id: newChatData.id,
+            label_id: labelId
+          });
+      }
+    }
+
+    // Refresh chats
+    await loadUserChats(currentUser.id);
+    setShowNewChatModal(false);
+
+    console.log('✅ Chat created successfully');
+  } catch (error) {
+    console.error('❌ Error creating chat:', error);
+    alert('Failed to create chat. Please try again.');
+  }
+}, [currentUser, useRealDatabase, loadUserChats]);
+
   return (
     <div className="flex h-screen bg-white">
       {/* Connection Status */}
@@ -1151,18 +1275,24 @@ const ChatLayout = ({
   onChatClick={handleChatClick}
   filterValue={filterValue}
   onFilterChange={setFilterValue}
-  currentUserId={currentUser?.id || ''} // Provide fallback for undefined
+  currentUserId={currentUser?.id || ''}
   searchQuery={searchQuery}
   onSearchChange={setSearchQuery}
   availableLabels={availableLabels}
   selectedLabel={selectedLabel}
   onSelectLabel={setSelectedLabel}
   isLoading={isLoading}
-   onNewChatClick={() => setShowNewChatModal(true)}
-
+  onNewChatClick={() => setShowNewChatModal(true)}
   onManageLabelsClick={() => setShowLabelModal(true)}
-
+  onQuickLabelAssign={handleAssignLabel}
+  onAssignLabel={handleAssignLabel}
+  onRefreshChats={() => {
+    if (currentUser) {
+      loadUserChats(currentUser.id);
+    }
+  }}
 />
+
       </div>
       
       {/* Chat Window */}

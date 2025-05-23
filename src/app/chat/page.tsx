@@ -4,7 +4,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../api/lib/supabase/client';
-import LogoutButton from '../api/auth/logout';
 import ChatLayout from '../api/components/chat/chatlayout';
 import { FaSpinner } from 'react-icons/fa';
 
@@ -92,7 +91,7 @@ export default function ChatPage() {
           }
           
           if (!initialUser) { // Only redirect if we don't have a valid cached user
-            router.push('/login');
+            router.push('/api/auth/login');
           }
           return;
         }
@@ -109,7 +108,7 @@ export default function ChatPage() {
       } catch (err) {
         console.error('Unexpected error:', err);
         if (!initialUser) { // Only redirect if we don't have a valid cached user
-          router.push('/login');
+          router.push('/api/auth/login');
         }
       } finally {
         setLoading(false);
@@ -127,7 +126,7 @@ export default function ChatPage() {
           console.log('Session expired or error, redirecting to login');
           clearInterval(sessionCheckInterval);
           sessionStorage.removeItem('chatUserSession');
-          router.push('/login');
+          router.push('/api/auth/login');
         }
       });
     }, 60000); // Check every minute
