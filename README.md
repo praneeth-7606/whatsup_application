@@ -405,7 +405,7 @@ If you like this project, please give it a ⭐️ on GitHub!
 For questions or support:
 - Create an [Issue](https://github.com/yourusername/whatsapp-clone/issues)
 - Email: praneethvvsss@gmail.com
-- Twitter: [@yourusername](https://twitter.com/yourusername)
+  
 
 ---
 
