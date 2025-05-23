@@ -1,210 +1,3 @@
-// // hooks/useRealtimeMessages.ts
-// import { useEffect, useState } from 'react';
-// // import { createClient } from '../lib/supabase/client';
-// import { createClient } from '../api/lib/supabase/client';
-
-// export interface Message {
-//   id: string;
-//   chat_id: string;
-//   sender_id: string;
-//   content: string;
-//   message_type: string;
-//   created_at: string;
-//   sender?: {
-//     id: string;
-//     name: string;
-//     email: string;
-//     avatar?: string;
-//   };
-// }
-
-// // Fix the chat labels query
-// export const fetchChatLabels = async (supabase: any, chatId: string) => {
-//   try {
-//     // Corrected query syntax - try different approaches
-//     const { data, error } = await supabase
-//       .from('chat_labels')
-//       .select(`
-//         id,
-//         chat_id,
-//         label_id,
-//         labels (
-//           id,
-//           name,
-//           color
-//         )
-//       `)
-//       .eq('chat_id', chatId);
-
-//     if (error) {
-//       console.error('Error fetching chat labels:', error);
-      
-//       // Fallback: try simpler query
-//       const { data: fallbackData, error: fallbackError } = await supabase
-//         .from('chat_labels')
-//         .select('*')
-//         .eq('chat_id', chatId);
-      
-//       if (!fallbackError) {
-//         return fallbackData || [];
-//       }
-      
-//       return [];
-//     }
-
-//     return data || [];
-//   } catch (err) {
-//     console.error('Unexpected error:', err);
-//     return [];
-//   }
-// };
-
-// // Real-time message subscription hook
-// export const useRealtimeMessages = (chatId: string) => {
-//   const [messages, setMessages] = useState<Message[]>([]);
-//   const [loading, setLoading] = useState(true);
-//   const supabase = createClient();
-
-//   useEffect(() => {
-//     if (!chatId) return;
-
-//     let isMounted = true;
-
-//     // Initial fetch
-//     const fetchMessages = async () => {
-//       try {
-//         const { data, error } = await supabase
-//           .from('messages')
-//           .select(`
-//             *,
-//             sender:sender_id (
-//               id,
-//               name,
-//               email,
-//               avatar
-//             )
-//           `)
-//           .eq('chat_id', chatId)
-//           .order('created_at', { ascending: true });
-
-//         if (error) {
-//           console.error('Error fetching messages:', error);
-//         } else if (data && isMounted) {
-//           setMessages(data);
-//         }
-//       } catch (err) {
-//         console.error('Unexpected error fetching messages:', err);
-//       } finally {
-//         if (isMounted) {
-//           setLoading(false);
-//         }
-//       }
-//     };
-
-//     fetchMessages();
-
-//     // Set up real-time subscription
-//     const channel = supabase
-//       .channel(`messages:chat_id=eq.${chatId}`)
-//       .on(
-//         'postgres_changes',
-//         {
-//           event: '*',
-//           schema: 'public',
-//           table: 'messages',
-//           filter: `chat_id=eq.${chatId}`
-//         },
-//         async (payload: any) => {
-//           console.log('Real-time message update:', payload);
-          
-//           if (!isMounted) return;
-
-//           if (payload.eventType === 'INSERT') {
-//             // Fetch the complete message with sender info
-//             const { data: newMessage } = await supabase
-//               .from('messages')
-//               .select(`
-//                 *,
-//                 sender:sender_id (
-//                   id,
-//                   name,
-//                   email,
-//                   avatar
-//                 )
-//               `)
-//               .eq('id', payload.new.id)
-//               .single();
-
-//             if (newMessage) {
-//               setMessages(prev => [...prev, newMessage]);
-//             }
-//           } else if (payload.eventType === 'UPDATE') {
-//             setMessages(prev =>
-//               prev.map(msg =>
-//                 msg.id === payload.new.id ? { ...msg, ...payload.new } : msg
-//               )
-//             );
-//           } else if (payload.eventType === 'DELETE') {
-//             setMessages(prev =>
-//               prev.filter(msg => msg.id !== payload.old.id)
-//             );
-//           }
-//         }
-//       )
-//       .subscribe((status) => {
-//         console.log('Subscription status:', status);
-//       });
-
-//     return () => {
-//       isMounted = false;
-//       supabase.removeChannel(channel);
-//     };
-//   }, [chatId]);
-
-//   return { messages, loading };
-// };
-
-// // Send message function
-// export const sendMessage = async (
-//   chatId: string,
-//   senderId: string,
-//   messageText: string
-// ) => {
-//   const supabase = createClient();
-  
-//   try {
-//     const { data, error } = await supabase
-//       .from('messages')
-//       .insert([
-//         {
-//           chat_id: chatId,
-//           sender_id: senderId,
-//           content: messageText,
-//           message_type: 'text',
-//           created_at: new Date().toISOString()
-//         }
-//       ])
-//       .select(`
-//         *,
-//         sender:sender_id (
-//           id,
-//           name,
-//           email,
-//           avatar
-//         )
-//       `);
-
-//     if (error) {
-//       console.error('Error sending message:', error);
-//       return { success: false, error };
-//     }
-
-//     return { success: true, data: data?.[0] };
-//   } catch (err) {
-//     console.error('Unexpected error sending message:', err);
-//     return { success: false, error: err };
-//   }
-// };
 
 // hooks/useRealtimeMessages.ts
 import { useEffect, useState } from 'react';
@@ -371,8 +164,18 @@ export const useRealtimeMessages = (chatId: string) => {
         if (error && !data) {
           console.error('All queries failed. Last error:', error);
         } else if (data && isMounted) {
-          setMessages(data);
-        }
+  const mappedMessages: Message[] = data.map((msg: any) => ({
+    id: msg.id,
+    chat_id: msg.chat_id,
+    sender_id: msg.sender_id,
+    content: msg.content,
+    message_type: msg.message_type || 'text',
+    created_at: msg.created_at,
+    sender: msg.sender || undefined
+  }));
+  setMessages(mappedMessages);
+}
+        
       } catch (err) {
         console.error('Unexpected error fetching messages:', err);
       } finally {
@@ -444,9 +247,9 @@ export const useRealtimeMessages = (chatId: string) => {
             };
 
             const newMessage = await fetchNewMessage();
-            if (newMessage) {
-              setMessages(prev => [...prev, newMessage]);
-            }
+if (newMessage) {
+  setMessages(prev => [...prev, newMessage as Message]);
+}
           } else if (payload.eventType === 'UPDATE') {
             setMessages(prev =>
               prev.map(msg =>

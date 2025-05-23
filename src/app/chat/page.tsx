@@ -1,65 +1,3 @@
-// // app/chat/page.tsx
-// "use client";
-
-// import { useEffect, useState } from "react";
-// import { useRouter } from "next/navigation";
-// import { createClient } from "../api/lib/supabase/client";
-// // import { createClient } from "@/lib/supabase/client";
-// // import ChatWindow from "@/components/ChatWindow";
-// import ChatWindow from "../api/components/chat/chatwindow";
-
-// export default function ChatPage() {
-//   const supabase = createClient();
-//   const [currentUser, setCurrentUser] = useState(null);
-//   const [currentChat, setCurrentChat] = useState(null);
-//   const router = useRouter();
-
-//   useEffect(() => {
-//     const fetchSessionAndChats = async () => {
-//       const { data: { user } } = await supabase.auth.getUser();
-//       if (!user) {
-//         router.push("/login");
-//         return;
-//       }
-
-//       setCurrentUser(user);
-
-//       // Get user's chat list
-//       const { data: chatMembers, error } = await supabase
-//         .from("chat_members")
-//         .select("*, chat:chats(id, name, is_group)")
-//         .eq("user_id", user.id);
-
-//       if (chatMembers?.length) {
-//         const firstChat = chatMembers[0].chat;
-//         setCurrentChat({
-//           id: firstChat.id,
-//           name: firstChat.name,
-//           isGroup: firstChat.is_group
-//         });
-//       }
-//     };
-
-//     fetchSessionAndChats();
-//   }, []);
-
-//   if (!currentUser || !currentChat) {
-//     return (
-//       <div className="flex items-center justify-center h-screen">
-//         <p className="text-gray-500">Loading chats...</p>
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <ChatWindow
-//       chatId={currentChat.id}
-//       chatName={currentChat.name}
-//       isGroup={currentChat.isGroup}
-//       currentUser={currentUser}
-//     />
-//   );
-// }
 
 
 'use client';
@@ -233,10 +171,7 @@ export default function ChatPage() {
           currentUserId={user.id} 
           currentUserName={user.profile?.full_name || user.email} 
           currentUserEmail={user.email}
-          onLogout={() => {
-            sessionStorage.removeItem('chatUserSession');
-            supabase.auth.signOut();
-          }} 
+         
         />
       </div>
     );
