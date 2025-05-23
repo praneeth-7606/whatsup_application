@@ -10,6 +10,7 @@ import ChatWindow from './chatwindow';
 import LabelManagementModal from './labelmanagementmodel';
 import NewChatModal from './newchatmodel';
 import LogoutButton from '../auth/logoutbutton';
+// import { Chat } from '../../lib/types';
 import {
   supabase, 
   formatDate, 
@@ -38,6 +39,27 @@ export interface Chat {
   phone?: string;
   status?: 'Demo' | 'Content' | 'Signup' | 'Internal';
   tags?: string[];
+}
+// Add these interface definitions after your existing ones
+interface ChatMemberResponse {
+  user_id: string;
+  users: {
+    id: string;
+    full_name: string;
+    email: string;
+    avatar_url: string | null;
+  } | null;
+}
+
+interface MessageResponse {
+  id: string;
+  content: string;
+  sender_id: string;
+  created_at: string;
+  users: {
+    full_name: string;
+    email: string;
+  } | null;
 }
 
 export interface Message {
@@ -631,9 +653,9 @@ const ChatLayout = ({
       let avatar = null;
 
       if (!chat.is_group && chatMembers && chatMembers.length >= 2) {
-        const otherUser = chatMembers.find(member => 
-          member.user_id !== userId && member.users
-        );
+        const otherUser = (chatMembers as ChatMemberResponse[]).find(member => 
+  member.user_id !== userId && member.users !== null
+);
         
         if (otherUser && otherUser.users) {
           displayName = otherUser.users.full_name || 'Unknown User';
@@ -751,7 +773,7 @@ const ChatLayout = ({
           }
 
           if (messagesData && messagesData.length > 0) {
-            const formattedMessages: Message[] = messagesData.map(msg => ({
+            const formattedMessages: Message[] = (messagesData as MessageResponse[]).map(msg => ({
               id: msg.id,
               text: msg.content,
               sender: msg.sender_id === currentUser?.id ? 'periskope' : 'them',
@@ -1124,7 +1146,7 @@ const ChatLayout = ({
       {/* Chat List */}
       <div className="w-80 border-r border-gray-200">
         <ChatList
-  chats={filteredChats}
+  chats={filteredChats as any[]}
   activeChat={activeChat}
   onChatClick={handleChatClick}
   filterValue={filterValue}
@@ -1136,9 +1158,10 @@ const ChatLayout = ({
   selectedLabel={selectedLabel}
   onSelectLabel={setSelectedLabel}
   isLoading={isLoading}
-  onNewChatClick={() => setShowNewChatModal(true)}
+   onNewChatClick={() => setShowNewChatModal(true)}
+
   onManageLabelsClick={() => setShowLabelModal(true)}
-  onQuickLabelAssign={handleAssignLabel}
+
 />
       </div>
       
@@ -1146,12 +1169,13 @@ const ChatLayout = ({
       <div className="flex-1">
        {activeChatData && currentUser ? (
     <ChatWindow
-      chat={activeChatData}
-      onSendMessage={(text) => handleSendMessage(activeChatData.id, text)}
-      currentUser={currentUser!}
-      isConnected={isConnected}
-    />
-  ) : (
+  chat={activeChatData}
+  onSendMessage={(text) => handleSendMessage(activeChatData.id, text)}
+  currentUser={currentUser}
+  isConnected={isConnected}
+  onLogout={handleLogout}
+/>
+  ) :  (
           <div className="flex items-center justify-center h-full bg-gray-50">
             <div className="text-center text-gray-500">
               <h3 className="text-lg font-medium mb-2">

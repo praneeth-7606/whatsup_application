@@ -22,7 +22,7 @@ interface ChatWindowProps {
   onSendMessage: (message: string) => void;
   currentUser: User | null;
   isConnected?: boolean;
-  onLogout: () => void;
+  onLogout: () => void;  // Add this line
 }
 
 const ChatWindow = ({ chat, onSendMessage, currentUser, isConnected, onLogout }: ChatWindowProps) => {
@@ -339,19 +339,19 @@ const ChatWindow = ({ chat, onSendMessage, currentUser, isConnected, onLogout }:
             {/* Current User Display */}
             <div className="flex items-center space-x-2">
               <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                {currentUser?.avatar ? (
+                {currentUser?.avatar_url ? (
                   <img 
-                    src={currentUser.avatar} 
-                    alt={currentUser.name} 
+                    src={currentUser.avatar_url} 
+                    alt={currentUser.full_name} 
                     className="w-6 h-6 rounded-full object-cover"
                   />
                 ) : (
                   <FaUser className="text-white text-xs" />
                 )}
-              </div>
+                              </div>
               <div className="flex flex-col">
                 <span className="text-sm font-medium text-gray-700">
-                  {currentUser?.name || 'Unknown User'}
+                  {currentUser?.full_name || 'Unknown User'}
                 </span>
                 {currentUser?.email && (
                   <span className="text-xs text-gray-500">{currentUser.email}</span>

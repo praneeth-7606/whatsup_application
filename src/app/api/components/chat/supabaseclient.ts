@@ -270,7 +270,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
 // Format date for display
 // Add this to your supabase/client.js file
 
-export const formatDate = (dateString) => {
+export const formatDate = (dateString: string | null | undefined): string => {
   if (!dateString) return '';
   
   const date = new Date(dateString);
@@ -280,7 +280,7 @@ export const formatDate = (dateString) => {
   yesterday.setDate(yesterday.getDate() - 1);
   
   // Format time consistently
-  const timeFormat = (date) => {
+  const timeFormat = (date: Date) => {
     return date.toLocaleTimeString('en-US', { 
       hour: '2-digit', 
       minute: '2-digit', 

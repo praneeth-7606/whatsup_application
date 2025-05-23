@@ -49,7 +49,7 @@ export const createClient = () => {
 // Enhanced date formatting function
 // Add this to your supabase/client.js file
 
-export const formatDate = (dateString) => {
+export const formatDate = (dateString: string | null | undefined): string => {
   if (!dateString) return '';
   
   const date = new Date(dateString);
@@ -59,7 +59,7 @@ export const formatDate = (dateString) => {
   yesterday.setDate(yesterday.getDate() - 1);
   
   // Format time consistently
-  const timeFormat = (date) => {
+  const timeFormat = (date: Date) => {
     return date.toLocaleTimeString('en-US', { 
       hour: '2-digit', 
       minute: '2-digit', 
@@ -115,17 +115,17 @@ export const subscribeToMessages = (
         schema: 'public',
         table: 'messages',
       },
-      (payload) => {
-        try {
-          console.log('Real-time message received:', payload);
-          callback(payload);
-        } catch (error) {
-          console.error('Error in message callback:', error);
-          onError?.(error instanceof Error ? error : new Error('Unknown callback error'));
-        }
-      }
+      (payload: any) => {
+  try {
+    console.log('Real-time message received:', payload);
+    callback(payload);
+  } catch (error) {
+    console.error('Error in message callback:', error);
+    onError?.(error instanceof Error ? error : new Error('Unknown callback error'));
+  }
+}
     )
-    .subscribe((status) => {
+    .subscribe((status: string) => {
       console.log('Global message subscription status:', status);
       if (status === 'SUBSCRIPTION_ERROR') {
         const error = new Error('Failed to subscribe to messages');
@@ -162,7 +162,7 @@ export const subscribeToChatUpdates = (
         schema: 'public',
         table: 'chats',
       },
-      (payload) => {
+      (payload:any) => {
         try {
           console.log('Chat update received:', payload);
           callback(payload);
@@ -172,7 +172,7 @@ export const subscribeToChatUpdates = (
         }
       }
     )
-    .subscribe((status) => {
+    .subscribe((status: string) => {
       console.log('Chat updates subscription status:', status);
       if (status === 'SUBSCRIPTION_ERROR') {
         const error = new Error('Failed to subscribe to chat updates');
