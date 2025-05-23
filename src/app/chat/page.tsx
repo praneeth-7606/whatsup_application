@@ -137,7 +137,7 @@ export default function ChatPage() {
       console.log('Auth state changed:', event, session?.user?.id);
       if (event === 'SIGNED_OUT') {
         sessionStorage.removeItem('chatUserSession');
-        router.push('/login');
+        router.push('/api/auth/login');
       } else if (event === 'SIGNED_IN' && session) {
         // Refresh user data without full page reload
         checkUser();
